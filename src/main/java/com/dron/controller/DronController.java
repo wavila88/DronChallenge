@@ -13,7 +13,12 @@ import com.dron.utils.TripMap;
 
 public class DronController<T> {
 
-  
+  /**
+	 * Print and return Map of Trips with obtimized deliveries.
+	 * @param drones
+	 * @param locations
+	 * @return Map of Trips
+	 */
 	public static HashMap<String, TripMap> createDeliversForDron(List<DronModel> drones, List<LocationModel> locations) {
 		// order drones by bigger maxWeight
 		Collections.sort(drones, Comparator.comparingInt(DronModel::getMaxWeight).reversed());
@@ -24,10 +29,6 @@ public class DronController<T> {
 		int i = 1;
 		int dronToUse = 0;
 		while (true) {
-
-
-			// get bigger drone
-		
 			// get bigger drone
 			DronModel drone = drones.get(dronToUse);
 			//create trips for dron selected
