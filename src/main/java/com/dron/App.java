@@ -24,6 +24,6 @@ public class App {
         .createElementList((locationName, packageWeight) -> new LocationModel(locationName, packageWeight));
     System.out.println("_________________________________________________________________________________");
     System.out.println("_________________________________________________________________________________");
-     DronController.createTripsByDrone(drones, locations);
+     DronController.createDeliversForDron(drones, locations);
   }
 }
