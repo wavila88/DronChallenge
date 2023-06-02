@@ -7,20 +7,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Scanner;
-import java.util.StringJoiner;
-import java.util.function.BiFunction;
-
 import com.dron.models.DronModel;
 import com.dron.models.LocationModel;
 import com.dron.utils.TripMap;
-import com.dron.utils.TripsByDrone;
+
 
 public class DronController<T> {
 	Map<String, List<String>> droneTrips = new HashMap<>();
 
-
-	
 	/**
 	 * will return trips by drone
 	 * 
@@ -28,31 +22,29 @@ public class DronController<T> {
 	 * @param locations
 	 * @return TripsByDrone
 	 */
-	public static TripsByDrone createTripsByDrone(List<DronModel> drones, List<LocationModel> locations) {
+	public static HashMap<String, TripMap> createTripsByDrone(List<DronModel> drones, List<LocationModel> locations) {
+		//order by heavier weight
+		Collections.sort(drones, Comparator.comparingInt(DronModel::getMaxWeight).reversed());
+		TripMap trips = createDeliversForTrip(drones, locations);
 
-		HashMap<String, TripMap> trips = createTrips(drones, locations);
+		HashMap<String, TripMap> tripsByDroneMap = new HashMap<>();
+		// iterate to separte trips per Dron
+		for (Map.Entry<String, List<String>> entry : trips.entrySet()) {
+			String tripKey = entry.getKey();
+			String droneName = tripKey.substring(0, tripKey.indexOf(" "));
+			String tripName = tripKey.substring(tripKey.indexOf(" ") + 1);
 
-		TripsByDrone tripsByDrone = new TripsByDrone();
-
-		for (Map.Entry<String, TripMap> entry : trips.entrySet()) {
-			String tripName = entry.getKey();
-			TripMap tripMap = entry.getValue();
-
-			for (Map.Entry<String, List<String>> tripEntry : tripMap.entrySet()) {
-				String droneName = tripEntry.getKey();
-				List<String> locationsName = tripEntry.getValue();
-
-				if (tripsByDrone.containsKey(droneName)) {
-					tripsByDrone.get(droneName).add(locationsName);
-				} else {
-					List<List<String>> tripsList = new ArrayList<>();
-					tripsList.add(locationsName);
-					tripsByDrone.put(droneName, tripsList);
-				}
+			if (tripsByDroneMap.containsKey(droneName)) {
+				TripMap tripMap = tripsByDroneMap.get(droneName);
+				tripMap.put(tripName, entry.getValue());
+			} else {
+				TripMap tripMap = new TripMap();
+				tripMap.put(tripName, entry.getValue());
+				tripsByDroneMap.put(droneName, tripMap);
 			}
 		}
-		printOutPutMessage(tripsByDrone);
-		return tripsByDrone;
+		printOutPutMessage(tripsByDroneMap);
+		return tripsByDroneMap;
 	}
 
 	/**
@@ -62,35 +54,52 @@ public class DronController<T> {
 	 * @param locations
 	 * @return HashMap<String,TripMap>
 	 */
-	public static HashMap<String, TripMap> createTrips(List<DronModel> drones, List<LocationModel> locations) {
-		// Sort from bigger to lower dron
-		// Collections.sort(drones, Comparator.comparingInt(DronModel::getMaxWeight).reversed());
-		HashMap<String, TripMap> trips = new HashMap<>();
-		var tripNumber = 1;
-		while (locations.size() > 0) {
-			TripMap tripsByDrone = createDeliversForTrip(drones, locations);
-			trips.put("Trip " + tripNumber, tripsByDrone);
-			tripNumber++;
-		}
-		return trips;
-	}
+	// public static HashMap<String, TripMap> createTrips(List<DronModel> drones,
+	// List<LocationModel> locations) {
+	// // Sort from bigger to lower dron
+	// // Collections.sort(drones,
+	// Comparator.comparingInt(DronModel::getMaxWeight).reversed());
+	// HashMap<String, TripMap> trips = new HashMap<>();
+	// var tripNumber = 1;
+	// while (locations.size() > 0) {
+	// TripMap tripsByDrone = createDeliversForTrip(drones, locations);
+	// trips.put("Trip " + tripNumber, tripsByDrone);
+	// tripNumber++;
+	// }
+	// return trips;
+	// }
 
 	public static TripMap createDeliversForTrip(List<DronModel> drones, List<LocationModel> locations) {
-    // Fill up first trip for first drone.
-    TripMap tripsByDrone = new TripMap();
+		// Fill up first trip for first drone.
+		TripMap tripsByDrone = new TripMap();
+		int i = 1;
+		int dronToUse = 0;
+		while (true) {
 
-    for (int i = 0; i < drones.size(); i++) {
-        DronModel drone = drones.get(i);
-        List<String> trips = setDeliveryForDrone(drone, locations);
-        tripsByDrone.put(drone.getDronName(), trips);
+			// get bigger drone
+			DronModel drone = drones.get(dronToUse);
+			List<String> trips = setDeliveryForDrone(drone, locations);
+			tripsByDrone.put(drone.getDronName() + " Trip " + i, trips);
+			// Validate if second dron can make a efficient delivery
+			int totalWeightLocations = locations.stream()
+					.mapToInt(LocationModel::getPackageWeight)
+					.sum();
+			i++;
+			if (totalWeightLocations < drone.getMaxWeight() &&
+					dronToUse + 1 < drones.size() &&
+					totalWeightLocations <= drones.get(dronToUse + 1).getMaxWeight()) {
+				dronToUse++;
+				i = 1;
+			}
 
-        if (locations.isEmpty()) {
-            break;
-        }
-    }
+			if (locations.isEmpty()) {
+				break;
+			}
 
-    return tripsByDrone;
-}
+		}
+
+		return tripsByDrone;
+	}
 
 	/**
 	 * Set all deliveries for a drone in one trip.
@@ -100,52 +109,61 @@ public class DronController<T> {
 	 * @return
 	 */
 	private static List<String> setDeliveryForDrone(DronModel drone, List<LocationModel> locations) {
-		var newWeight = 0;
+		int remainingWeight = drone.getMaxWeight();
 		List<String> trips = new ArrayList<>();
 		StringBuilder builder = new StringBuilder();
-		while (true) {
-			// start with the heaviest deliveries
-			var location = getHeaviestLocation(locations);
-			// validate if Dron can support new weight, if is ok added to trip,
-			if (location != null && (newWeight + location.getPackageWeight()) <= drone.getMaxWeight()) {
-				trips.add(location.getLocationName());
-				locations.remove(location);
-				newWeight = newWeight + location.getPackageWeight();
-				builder.append(location.getLocationName());
-				// if not more locations finish trips
+
+		while (remainingWeight > 0) {
+			LocationModel bestFitLocation = findBestFitLocation(locations, remainingWeight);
+
+			if (bestFitLocation != null) {
+				trips.add(bestFitLocation.getLocationName());
+				builder.append(bestFitLocation.getLocationName());
+				remainingWeight -= bestFitLocation.getPackageWeight();
+				locations.remove(bestFitLocation);
 			} else {
 				break;
 			}
-
 		}
+
 		return trips;
 	}
 
-	private static LocationModel getHeaviestLocation(List<LocationModel> locations) {
-		Optional<LocationModel> location = locations.stream().max(
-				(loc1, loc2) -> Integer.compare(loc1.getPackageWeight(), loc2.getPackageWeight()));
-		if (location.isPresent()) {
-			return location.get();
+	private static LocationModel findBestFitLocation(List<LocationModel> locations, int remainingWeight) {
+		LocationModel bestFit = null;
+		int weightDifference = Integer.MAX_VALUE;
+
+		for (LocationModel location : locations) {
+			int difference = Math.abs(location.getPackageWeight() - remainingWeight);
+			if (difference < weightDifference) {
+				bestFit = location;
+				weightDifference = difference;
+			}
 		}
-		return null;
+
+		return bestFit;
 	}
 
-	private static void printOutPutMessage(TripsByDrone tripsByDrone) {
-		for (Map.Entry<String, List<List<String>>> entry : tripsByDrone.entrySet()) {
+	private static void printOutPutMessage(HashMap<String, TripMap> tripsByDrone) {
+		for (Map.Entry<String, TripMap> entry : tripsByDrone.entrySet()) {
 			String droneName = entry.getKey();
-			List<List<String>> trips = entry.getValue();
+			TripMap trips = entry.getValue();
 
 			System.out.println("[" + droneName + "]");
 
 			int tripCount = 1;
-			for (List<String> trip : trips) {
+			for (Map.Entry<String, List<String>> tripEntry : trips.entrySet()) {
+				String tripName = tripEntry.getKey();
+				List<String> locations = tripEntry.getValue();
+
 				System.out.println("Trip #" + tripCount);
-				for (String location : trip) {
+				for (String location : locations) {
 					System.out.print("[" + location + "], ");
 				}
 				System.out.println();
 				tripCount++;
 			}
+
 			System.out.println();
 		}
 

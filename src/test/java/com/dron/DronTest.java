@@ -12,7 +12,6 @@ import com.dron.controller.DronController;
 import com.dron.models.DronModel;
 import com.dron.models.LocationModel;
 import com.dron.utils.TripMap;
-import com.dron.utils.TripsByDrone;
 import com.dron.utilsTest.Utils;
 
 /**
@@ -44,8 +43,7 @@ Evaluate input given by Challenge
 	 */
 	@Test
 	public void evaluateChallenge() {
-		TripsByDrone valueTest = Utils.getTripsByDrone();
-
+		HashMap<String, TripMap> valueTest = Utils.getChallengeTripsByDrone();
 		List<DronModel> drones = new ArrayList<>(Arrays.asList(
 				new DronModel("DroneA", 200),
 				new DronModel("DroneB", 250),
@@ -57,7 +55,7 @@ Evaluate input given by Challenge
 				new LocationModel("LocationD", 150),
 				new LocationModel("LocationE", 100),
 				new LocationModel("LocationF", 200),
-				new LocationModel("LocationG", 200),
+				new LocationModel("LocationG", 50),
 				new LocationModel("LocationH", 80),
 				new LocationModel("LocationI", 70),
 				new LocationModel("LocationJ", 50),
@@ -66,12 +64,9 @@ Evaluate input given by Challenge
 				new LocationModel("LocationM", 50),
 				new LocationModel("LocationN", 30),
 				new LocationModel("LocationO", 20),
-				new LocationModel("LocationP", 90),
-			
-				new LocationModel("location 7", 10)));
-		TripsByDrone trips = DronController.createTripsByDrone(drones, locations);
-		// Assert.assertEquals(valueTest, trips);
-		System.out.println("DATA");
+				new LocationModel("LocationP", 90)));
+		var trips = DronController.createTripsByDrone(drones, locations);
+		 Assert.assertEquals(valueTest, trips);
 	}
 
 
@@ -80,11 +75,11 @@ Evaluate input given by Challenge
 	 */
 	@Test
 	public void shouldReturnTripsPerDrone() {
-		TripsByDrone valueTest = Utils.getTripsByDrone();
+		 HashMap<String, TripMap>  valueTest = Utils.getResponseForTwoDrones();
 
 		List<DronModel> drones = new ArrayList<>(Arrays.asList(
-				new DronModel("dron 1", 30),
-				new DronModel("dron 2", 20)));
+				new DronModel("dron1", 30),
+				new DronModel("dron2", 20)));
 		List<LocationModel> locations = new ArrayList<>(Arrays.asList(
 				new LocationModel("location 1", 10),
 				new LocationModel("location 2", 10),
@@ -93,18 +88,19 @@ Evaluate input given by Challenge
 				new LocationModel("location 5", 10),
 				new LocationModel("location 6", 10),
 				new LocationModel("location 7", 10)));
-		TripsByDrone trips = DronController.createTripsByDrone(drones, locations);
+		var trips = DronController.createTripsByDrone(drones, locations);
+	
 		Assert.assertEquals(valueTest, trips);
 	}
 
 	/**
-	 * Validate one trip for tow drones
+	 * Validate createDeliversForTrip
 	 */
 	@Test
 	public void shouldDeliverOneTripTwoDrones() {
 		TripMap valueTest = new TripMap();
-		valueTest.put("dron 1", Arrays.asList("location 1", "location 2", "location 3"));
-		valueTest.put("dron 2", Arrays.asList("location 4"));
+		valueTest.put("dron 1 Trip 1", Arrays.asList("location 1", "location 2", "location 3"));
+		valueTest.put("dron 2 Trip 1", Arrays.asList("location 4"));
 
 		List<DronModel> drones = new ArrayList<>(Arrays.asList(
 				new DronModel("dron 1", 30),
@@ -118,33 +114,5 @@ Evaluate input given by Challenge
 		Assert.assertEquals(valueTest, trips);
 	}
 
-	/**
-	 * Validate one trip for two drones
-	 */
-	@Test
-	public void shouldDeliverTwoTripsOneDron() {
-		TripMap trip1 = new TripMap();
-		trip1.put("dron 1", Arrays.asList("location 1", "location 2", "location 3"));
-		trip1.put("dron 2", Arrays.asList("location 4", "location 5"));
-		TripMap trip2 = new TripMap();
-		trip2.put("dron 1", Arrays.asList("location 6", "location 7"));
-		HashMap<String, TripMap> valueTest = new HashMap<String, TripMap>();
 
-		valueTest.put("Trip 1", trip1);
-		valueTest.put("Trip 2", trip2);
-
-		List<DronModel> drones = new ArrayList<>(Arrays.asList(
-				new DronModel("dron 1", 30),
-				new DronModel("dron 2", 20)));
-		List<LocationModel> locations = new ArrayList<>(Arrays.asList(
-				new LocationModel("location 1", 10),
-				new LocationModel("location 2", 10),
-				new LocationModel("location 3", 10),
-				new LocationModel("location 4", 10),
-				new LocationModel("location 5", 10),
-				new LocationModel("location 6", 10),
-				new LocationModel("location 7", 10)));
-		var trips = DronController.createTrips(drones, locations);
-		Assert.assertEquals(valueTest, trips);
-	}
 }
